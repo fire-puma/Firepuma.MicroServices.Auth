@@ -3,6 +3,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using Firepuma.MicroServices.Auth.Exceptions;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -12,12 +14,14 @@ namespace Firepuma.MicroServices.Auth
 {
     public class MicroServiceClient
     {
+        private readonly ILogger _logger;
         private readonly IMicroServiceTokenProvider _microServiceTokenProvider;
         private readonly HttpClient _httpClient;
         private readonly Uri _baseUri;
 
-        public MicroServiceClient(IMicroServiceTokenProvider microServiceTokenProvider, Uri baseUri)
+        public MicroServiceClient(ILogger logger, IMicroServiceTokenProvider microServiceTokenProvider, Uri baseUri)
         {
+            _logger = logger;
             _microServiceTokenProvider = microServiceTokenProvider;
             _baseUri = baseUri;
 
@@ -40,8 +44,18 @@ namespace Firepuma.MicroServices.Auth
         public async Task<TResponse> Get<TResponse>(string relativeUrl)
         {
             var uri = await GetUriAndPrepClient(relativeUrl);
-            var successResponse = await _httpClient.GetAsync(uri);
-            var responseString = await successResponse.Content.ReadAsStringAsync();
+            var response = await _httpClient.GetAsync(uri);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var content = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
+
+                _logger.LogError($"Status code {response.StatusCode} is not successful. Content: {content}");
+
+                throw new MicroServiceHttpException(response.StatusCode, response.ReasonPhrase);
+            }
+
+            var responseString = await response.Content.ReadAsStringAsync();
 
             return FromJson<TResponse>(responseString);
         }
@@ -59,7 +73,10 @@ namespace Firepuma.MicroServices.Auth
             if (!response.IsSuccessStatusCode)
             {
                 var content = response.Content != null ? await response.Content.ReadAsStringAsync() : "";
-                throw new Exception($"Status code {response.StatusCode} is not successful. Content: {content}");
+
+                _logger.LogError($"Status code {response.StatusCode} is not successful. Content: {content}");
+
+                throw new MicroServiceHttpException(response.StatusCode, response.ReasonPhrase);
             }
 
             var responseString = await response.Content.ReadAsStringAsync();

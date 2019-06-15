@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 
@@ -14,5 +15,10 @@ namespace Firepuma.MicroServices.Auth.OpenIdConnect
 
         [Required]
         public string ClientSecret { get; set; }
+        
+        [Required]
+        public bool? AutoRefreshEnabled { get; set; }
+        
+        public TimeSpan? AutoRefreshInterval { get; set; } // only when enabled
     }
 }
