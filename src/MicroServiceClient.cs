@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -26,6 +27,14 @@ namespace Firepuma.MicroServices.Auth
             _baseUri = baseUri;
 
             _httpClient = new HttpClient();
+        }
+
+        public void AddDefaultHeaders(Dictionary<string, string> headers)
+        {
+            foreach (var headerPair in headers)
+            {
+                _httpClient.DefaultRequestHeaders.Add(headerPair.Key, headerPair.Value);
+            }
         }
 
         private async Task<Uri> GetUriAndPrepClient(string relativeUrl)
